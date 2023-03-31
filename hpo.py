@@ -10,6 +10,9 @@ import torch.optim as optim
 import torchvision
 import torchvision.models as models
 import torchvision.transforms as transforms
+from PIL import ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
