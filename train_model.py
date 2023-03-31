@@ -12,22 +12,24 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 
 # TODO: Import dependencies for Debugging and Profiling
+from PIL import ImageFile
 from smdebug import modes
 from smdebug.profiler.utils import str2bool
-from smdebug.pytorch import get_hook
+from smdebug.pytorch import Hook, get_hook
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # def test(model, test_loader):
-def test(model, test_loader, criterion):
+# def test(model, test_loader, criterion):
+def test(model, test_loader, criterion, hook):
     """
     TODO: Complete this function that can take a model and a
           testing data loader and will get the test accuray/loss of the model
           Remember to include any debugging/profiling hooks that you might need
     """
     model.eval()
-    hook = get_hook()
+    # hook = get_hook()
     hook.set_mode(modes.EVAL)
 
     test_loss = 0
@@ -47,14 +49,15 @@ def test(model, test_loader, criterion):
     print(f"Average loss: {test_loss:.4f}, Accuracy: {correct}/{n}")
 
 
-def train(model, train_loader, criterion, optimizer):
+# def train(model, train_loader, criterion, optimizer):
+def train(model, train_loader, criterion, optimizer, hook):
     """
     TODO: Complete this function that can take a model and
           data loaders for training and will get train the model
           Remember to include any debugging/profiling hooks that you might need
     """
     model.train()
-    hook = get_hook(create_if_not_exists=True)
+    # hook = get_hook(create_if_not_exists=True)
     hook.set_mode(modes.TRAIN)
 
     for features, label in train_loader:
@@ -108,12 +111,17 @@ def main(args):
     """
     model = net()
     model.to(DEVICE)
+    
+    hook = Hook.create_from_json_file()
+    hook.register_hook(model)
 
     """
     TODO: Create your loss and optimizer
     """
     loss_criterion = nn.NLLLoss()
-    optimizer = optim.Adam(model.fc.parameters(), lr=args.lr)
+    optimizer = optim.Adam(
+        model.fc.parameters(), lr=args.lr, betas=(args.beta1, args.beta2)
+    )
 
     """
     TODO: Call the train function to start training your model
@@ -158,13 +166,15 @@ def main(args):
     # )
 
     for _ in range(args.epochs):
-        model = train(model, train_loader, loss_criterion, optimizer)
+        # model = train(model, train_loader, loss_criterion, optimizer)
+        model = train(model, train_loader, loss_criterion, optimizer, hook)
         # test(model, valid_loader, loss_criterion)
 
     """
     TODO: Test the model to see its accuracy
     """
-    test(model, test_loader, loss_criterion)
+    # test(model, test_loader, loss_criterion)
+    test(model, test_loader, loss_criterion, hook)
 
     """
     TODO: Save the trained model
@@ -182,6 +192,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", default=32, type=int)
     parser.add_argument("--test-batch-size", default=128, type=int)
     parser.add_argument("--lr", default=1.0, type=float)
+    parser.add_argument("--beta1", default=0.9, type=float)
+    parser.add_argument("--beta2", default=0.999, type=float)
     parser.add_argument(
         "--train-dir", default=os.environ["SM_CHANNEL_TRAINING"], type=str
     )
